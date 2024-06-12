@@ -21,10 +21,14 @@ export interface Token {
     $schema: string;
     json_uri: string;
     files: any[];
-    metadata: Record;
-    links: Record;
+    metadata: Metadata | CollectionMetadata;
+    links: Links;
   }
-  
+
+  export interface Links {
+    image: string;
+    external_url?: string;
+  }
   export interface Authority {
     address: string;
     scopes: string[];
@@ -113,6 +117,7 @@ export interface Token {
     description: string;
     name: string;
     symbol: string;
+    token_standard?: string;
   }
   
   export interface Attribute {
@@ -126,6 +131,7 @@ export interface Token {
     image: string;
     description: string;
     external_url: string;
+    token_standard?: string
   }
   
   export interface PriceInfo {
