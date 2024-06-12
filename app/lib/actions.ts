@@ -11,7 +11,7 @@ export async function getQuote(inputToken: string, outputToken: string, inputAmo
     const inp_mint = (await (await fetch(`https://price.jup.ag/v6/price?ids=${inputToken}`)).json()).data[inputToken].id;
     const out_mint = (await (await fetch(`https://price.jup.ag/v6/price?ids=${outputToken}`)).json()).data[outputToken].id;
 
-      const mint = await connection.getParsedAccountInfo(new PublicKey(inp_mint))!
+      const mint:any = await connection.getParsedAccountInfo(new PublicKey(inp_mint))!
       const decimals = mint.value?.data?.parsed.info.decimals;
       let amount;
       if(!decimals){
