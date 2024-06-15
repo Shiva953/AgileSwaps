@@ -6,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "./ui/input"
 import { useEffect, useState } from "react"
 import { useWallet } from "@solana/wallet-adapter-react"
-import { clusterApiUrl, Connection, VersionedTransaction, Transaction, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import { clusterApiUrl, Connection, VersionedTransaction, TransactionSignature, Transaction, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import fetch from 'cross-fetch';
 import { Buffer } from 'buffer';
 import {
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/alert"
 import { getTokenBalance, getQuote } from "@/app/lib/actions"
 import { useToast } from "./ui/use-toast"
+import Link from "next/link"
 
 interface Token{
   logoURI: string,
@@ -40,16 +41,14 @@ const url = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
 
 export default function Swap(){
     const connection = new Connection(url);
-    const { publicKey, sendTransaction } = useWallet();
+    const { publicKey, sendTransaction, signTransaction} = useWallet();
     const { toast } = useToast();
-
     const [inputAmount, setInputAmount] = useState<number>(0);
     const [selectedInputToken, setselectedInputToken] = useState<Token>({symbol: "SOL", logoURI: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png"})
     const [selectedOutputToken, setselectedOutputToken] = useState<Token>({symbol: "USDC", logoURI: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png"})
     const [outputAmount,setOutputAmount] = useState<number>(0);
     const [slippage, setSlippage] = useState<number>(0.5);
     const [topTokens, setTopTokens] = useState<Token[]>([]);
-
 
     useEffect(() => {
       async function getPrice(){
@@ -124,16 +123,31 @@ export default function Swap(){
         value: { blockhash, lastValidBlockHeight }
     } = await connection.getLatestBlockhashAndContext();
 
-      const sign = await sendTransaction(transaction, connection, { minContextSlot })
+      const sign = await sendTransaction(transaction, connection, {minContextSlot});
 
+      if(!sign){
+        toast({
+          title: "Transaction Failed!",
+          description: "Signature not found"
+        })
+      }
       const rawTransaction = transaction.serialize()
       const txid = await connection.sendRawTransaction(rawTransaction, {
         skipPreflight: true,
         maxRetries: 2
       });
-      const confirmation = await connection.confirmTransaction(txid);
+      
+      toast({
+        action: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50"><circle fill="#C1FFF8" stroke="#C1FFF8" stroke-width="2" r="2.5" cx="10" cy="16.25"><animate attributeName="cy" calcMode="spline" dur="2" values="16.25;33.75;16.25;" keySplines=".5 0 .5 1;.5 0 .5 1" repeatCount="indefinite" begin="-.4"></animate></circle><circle fill="#C1FFF8" stroke="#C1FFF8" stroke-width="2" r="2.5" cx="25" cy="16.25"><animate attributeName="cy" calcMode="spline" dur="2" values="16.25;33.75;16.25;" keySplines=".5 0 .5 1;.5 0 .5 1" repeatCount="indefinite" begin="-.2"></animate></circle><circle fill="#C1FFF8" stroke="#C1FFF8" stroke-width="2" r="2.5" cx="40" cy="16.25"><animate attributeName="cy" calcMode="spline" dur="2" values="16.25;33.75;16.25;" keySplines=".5 0 .5 1;.5 0 .5 1" repeatCount="indefinite" begin="0"></animate></circle></svg>,
+        description: "Confirming Transaction..."
+      })
+
+      const confirmation = await connection.confirmTransaction({blockhash, lastValidBlockHeight, signature: sign});
       if(confirmation){
-      console.log(`https://solscan.io/tx/${txid}`);
+        toast({
+          title: "Transaction Confirmed!",
+          action: <Button><Link href={`https://explorer.solana.com/tx/${sign}?cluster=mainnet-beta`}>Show In Explorer</Link></Button>
+        })
       }
     }
     catch(error: any){
@@ -146,7 +160,7 @@ export default function Swap(){
 
     return (
       <div className="flex flex-col">
-      <h1 className="mx-auto mb-6 justify-center text-[3.5rem] font-bold z-20 bg-clip-text text-transparent bg-gradient-to-b from-neutral-200 to-neutral-400">SPL Swapper</h1>
+      <h1 className="mx-auto mb-5 justify-center opacity-80 text-[3.5rem] font-bold z-20 bg-clip-text text-transparent bg-gradient-to-b from-neutral-200 to-neutral-400">SPL Swaps</h1>
       <div className="relative rounded-lg w-[32rem] mt--64 overscroll-y-none">
       <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-purple-700 rounded-[100px] blur-[54px] opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
         <div className="relative bg-black bg-opacity-[0.85] z-10 p-6 rounded-lg w-[32rem] text-white items-center justify-center">
@@ -164,6 +178,7 @@ export default function Swap(){
           <a className="font-bold text-[0.7rem] ml-2">{slippage}</a>
           </Button>
       </AlertDialogTrigger>
+      
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Enter Slippage</AlertDialogTitle>
